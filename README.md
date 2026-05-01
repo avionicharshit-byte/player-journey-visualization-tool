@@ -4,6 +4,15 @@ A web-based tool for LILA Games' Level Design team to visualize player behavior 
 
 **Live demo:** _https://player-journey-visualization-tool-m7eaq2n2j.vercel.app?_vercel_share=5B7deL0o8TwK1Li9IopFWK5pRexILgTL_
 
+## How a Level Designer would use this in 2 minutes
+
+1. **Open the deployed URL.** The app auto-loads a sample match so you see player paths immediately — no setup, no "Select a Match" empty state.
+2. **Glance at the Hotspots panel (bottom-left).** It auto-detects the top 3 kill clusters in the loaded match and labels them by region (Center, NE, SW…). This is your "where did people die the most" answer in one look.
+3. **Toggle a heatmap.** In the sidebar, flip "Kills" / "Deaths" / "Traffic" on to see density layers across the whole map. Compare these against the map's intended chokepoints.
+4. **Press play on the timeline.** Watch the match unfold — path lines draw themselves and events pop in chronologically. Drag the scrubber to skip to a specific moment, or set 4x speed for a fast read.
+5. **Switch maps/dates/matches** in the left sidebar to compare. Selecting a new match auto-snaps the map filter to that match's map. Try filtering to only humans or only bots to see how the two populations behave differently.
+6. **Want your own data?** Click "Load Custom Data" in the sidebar and drop any `player_data.zip`. Files are parsed locally with DuckDB-WASM — nothing leaves the browser.
+
 ## What it does
 
 - Loads telemetry from 5 days of production gameplay (~89k events, 796 matches, 3 maps)
@@ -14,6 +23,7 @@ A web-based tool for LILA Games' Level Design team to visualize player behavior 
 - **Heatmap overlays** for kills, deaths, or traffic density
 - **Filtering** by map, date, match, player type, and event type
 - **Event clustering** — overlapping events at the same spot collapse into a count badge so dense fight zones stay readable
+- **Hotspots auto-summary** — top 3 densest kill clusters surfaced automatically with a region label (no need to scrub the timeline to find the action)
 - **Pan/zoom** on the map (scroll to zoom, drag to pan)
 - **Load custom data in the browser** — drop any `player_data.zip` into the UI and it's parsed entirely client-side via DuckDB-WASM. No server, no upload — your data never leaves the browser. Works for any month/date folders, not just `February_XX`.
 

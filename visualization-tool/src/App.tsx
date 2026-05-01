@@ -4,6 +4,7 @@ import { Controls } from './components/Controls';
 import { Timeline } from './components/Timeline';
 import { LoadingScreen } from './components/LoadingScreen';
 import { CustomDataLoader } from './components/CustomDataLoader';
+import { HotspotsPanel } from './components/HotspotsPanel';
 import { useData } from './hooks/useData';
 import type { CustomDataset } from './utils/parquetLoader';
 import type { Filters, HeatmapMode, MatchInfo, PlayerEvent, MapId } from './types';
@@ -45,6 +46,19 @@ function App() {
     setMatchEvents([]);
     setFilters(DEFAULT_FILTERS);
   };
+
+  // Auto-select the first available match once data is ready, so a level
+  // designer lands on something visual instead of an empty "Select a Match"
+  // screen. Picks an AmbroseValley match preferentially since the bundled
+  // sample has the most data on that map; otherwise falls back to matches[0].
+  useEffect(() => {
+    if (isLoading) return;
+    if (selectedMatch) return;
+    if (matches.length === 0) return;
+    const preferred = matches.find(m => m.mapId === 'AmbroseValley') ?? matches[0];
+    setSelectedMatch(preferred);
+    setFilters(prev => ({ ...prev, map: preferred.mapId }));
+  }, [isLoading, matches, selectedMatch]);
 
   // Timeline state
   const [currentTime, setCurrentTime] = useState(0);
@@ -119,8 +133,10 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Map Canvas */}
-        <div className="flex-1 relative min-h-0 overflow-hidden">
+        {/* Map area: padded on the left so the floating panels (events counter
+            at top-left, hotspots panel at bottom-left) live in a reserved
+            strip and don't cover the actual minimap. */}
+        <div className="flex-1 relative min-h-0 overflow-hidden pl-64">
           {isLoadingMatch && (
             <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10">
               <div className="text-white">Loading match data...</div>
@@ -145,6 +161,12 @@ function App() {
               currentTime={currentTime}
             />
           )}
+
+          {/* Hotspots auto-summary — same column as the events counter (top-left),
+              positioned just above the playback control. */}
+          {selectedMatch && matchEvents.length > 0 && (
+            <HotspotsPanel events={matchEvents} mapId={currentMapId} />
+          )}
         </div>
 
         {/* Timeline */}
@@ -157,6 +179,7 @@ function App() {
           setPlaybackSpeed={setPlaybackSpeed}
           matchDuration={matchDuration}
           disabled={!selectedMatch || matchEvents.length === 0}
+          events={matchEvents}
         />
       </div>
     </div>

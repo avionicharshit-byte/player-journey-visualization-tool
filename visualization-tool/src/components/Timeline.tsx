@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { PlayerEvent } from '../types';
 
 interface TimelineProps {
   currentTime: number;
@@ -9,6 +10,64 @@ interface TimelineProps {
   setPlaybackSpeed: (speed: number) => void;
   matchDuration: number; // in milliseconds
   disabled: boolean;
+  /** Match events used to render notable-event ticks above the scrubber. */
+  events?: PlayerEvent[];
+}
+
+interface EventMarker {
+  position: number; // 0..1 along the timeline
+  type: PlayerEvent['event'];
+  count: number;    // how many events from the same bucket (timestamp + type)
+  color: string;
+  label: string;
+}
+
+/**
+ * Bucket "notable" events (kills, deaths, storm) into time slots so a
+ * match with hundreds of kills doesn't render hundreds of ticks. Buckets
+ * are 1% of the timeline; events of the same type within a bucket merge.
+ */
+function buildEventMarkers(events: PlayerEvent[]): EventMarker[] {
+  if (events.length === 0) return [];
+
+  const NOTABLE: Record<string, { color: string; label: string }> = {
+    Kill:           { color: '#84cc16', label: 'Kill' },
+    BotKill:        { color: '#84cc16', label: 'Kill (bot target)' },
+    Killed:         { color: '#ef4444', label: 'Death' },
+    BotKilled:      { color: '#ef4444', label: 'Bot death' },
+    KilledByStorm:  { color: '#d946ef', label: 'Storm death' }
+  };
+
+  const timestamps = events.map(e => e.ts);
+  const minTs = Math.min(...timestamps);
+  const maxTs = Math.max(...timestamps);
+  const range = maxTs - minTs || 1;
+
+  const BUCKETS = 100;
+  const buckets = new Map<string, EventMarker>();
+
+  for (const e of events) {
+    const meta = NOTABLE[e.event];
+    if (!meta) continue;
+
+    const pos = (e.ts - minTs) / range;
+    const bucketIdx = Math.min(BUCKETS - 1, Math.floor(pos * BUCKETS));
+    const key = `${bucketIdx}-${e.event}`;
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      buckets.set(key, {
+        position: (bucketIdx + 0.5) / BUCKETS,
+        type: e.event,
+        count: 1,
+        color: meta.color,
+        label: meta.label
+      });
+    }
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => a.position - b.position);
 }
 
 export function Timeline({
@@ -19,10 +78,14 @@ export function Timeline({
   playbackSpeed,
   setPlaybackSpeed,
   matchDuration,
-  disabled
+  disabled,
+  events = []
 }: TimelineProps) {
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const [hoveredMarker, setHoveredMarker] = useState<EventMarker | null>(null);
+
+  const markers = useMemo(() => buildEventMarkers(events), [events]);
 
   useEffect(() => {
     if (!isPlaying || disabled) {
@@ -173,8 +236,46 @@ export function Timeline({
             </div>
           </div>
 
-          {/* Progress Slider */}
+          {/* Progress Slider with notable-event markers */}
           <div className="flex-1 px-2">
+            {/* Markers row above the scrubber. Click any marker to seek. */}
+            <div className="relative h-5 mb-1">
+              {!disabled && markers.map((m, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setIsPlaying(false);
+                    setCurrentTime(Math.max(0.001, m.position));
+                  }}
+                  onMouseEnter={() => setHoveredMarker(m)}
+                  onMouseLeave={() => setHoveredMarker(null)}
+                  className="absolute top-0 -translate-x-1/2 hover:scale-150 transition-transform cursor-pointer"
+                  style={{
+                    left: `${m.position * 100}%`,
+                    width: '4px',
+                    height: '14px',
+                    background: m.color,
+                    boxShadow: `0 0 6px ${m.color}`
+                  }}
+                  title={`${m.label}${m.count > 1 ? ` × ${m.count}` : ''}`}
+                  aria-label={`Seek to ${m.label}`}
+                />
+              ))}
+
+              {/* Tooltip on marker hover */}
+              {hoveredMarker && (
+                <div
+                  className="absolute -top-7 -translate-x-1/2 bg-slate-900 border border-slate-600 px-2 py-0.5 rounded text-[11px] text-white whitespace-nowrap pointer-events-none shadow-lg"
+                  style={{ left: `${hoveredMarker.position * 100}%` }}
+                >
+                  <span style={{ color: hoveredMarker.color }}>●</span>{' '}
+                  {hoveredMarker.label}
+                  {hoveredMarker.count > 1 ? ` × ${hoveredMarker.count}` : ''}
+                </div>
+              )}
+            </div>
+
             <input
               type="range"
               min="0"
@@ -190,6 +291,25 @@ export function Timeline({
                   : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${currentTime * 100}%, #374151 ${currentTime * 100}%, #374151 100%)`
               }}
             />
+
+            {/* Tiny inline legend so users know what the colored ticks are */}
+            {!disabled && markers.length > 0 && (
+              <div className="flex gap-3 mt-1.5 text-[10px] text-slate-400">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 inline-block" style={{ background: '#84cc16' }} />
+                  Kill
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 inline-block" style={{ background: '#ef4444' }} />
+                  Death
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 inline-block" style={{ background: '#d946ef' }} />
+                  Storm
+                </span>
+                <span className="text-slate-500">· click any tick to jump</span>
+              </div>
+            )}
           </div>
 
           {/* Speed Control */}

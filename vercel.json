@@ -1,4 +1,4 @@
-{
+ {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd visualization-tool && npm install",
   "buildCommand": "cd visualization-tool && npm run build",
