@@ -91,9 +91,9 @@ function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Map Canvas */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-h-0 overflow-hidden">
           {isLoadingMatch && (
             <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10">
               <div className="text-white">Loading match data...</div>
