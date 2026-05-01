@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { PlayerEvent, MapId, Filters, HeatmapMode } from '../types';
 import { MAP_CONFIGS, MAP_SIZE, worldToPixel, isHumanPlayer } from '../utils/mapConfig';
+import type { Hotspot } from '../utils/hotspots';
 
 interface MapCanvasProps {
   events: PlayerEvent[];
@@ -8,6 +9,8 @@ interface MapCanvasProps {
   filters: Filters;
   heatmapMode: HeatmapMode;
   currentTime: number;
+  /** Top kill hotspots — drawn as numbered pin badges on top of everything. */
+  hotspots?: Hotspot[];
 }
 
 interface Transform {
@@ -21,7 +24,8 @@ export function MapCanvas({
   mapId,
   filters,
   heatmapMode,
-  currentTime
+  currentTime,
+  hotspots = []
 }: MapCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -239,8 +243,19 @@ export function MapCanvas({
       ctx.restore();
     });
 
+    // Hotspot pin badges drawn LAST so they sit on top of every other marker.
+    // Lets the user trace each numbered entry in the panel back to a spot on the map.
+    if (hotspots.length > 0) {
+      hotspots.forEach((h, i) => {
+        const { pixelX, pixelY } = worldToPixel(h.worldX, h.worldZ, mapId);
+        const x = pixelX * mapScale;
+        const y = pixelY * mapScale;
+        drawHotspotPin(ctx, x, y, i + 1, pulse);
+      });
+    }
+
     ctx.restore();
-  }, [mapImage, canvasSize, transform, events, currentTime, filters, heatmapMode, mapId, getVisibleEvents, animationFrame]);
+  }, [mapImage, canvasSize, transform, events, currentTime, filters, heatmapMode, mapId, getVisibleEvents, animationFrame, hotspots]);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -618,6 +633,50 @@ function drawClusterMarker(ctx: CanvasRenderingContext2D, cluster: EventCluster,
   // Reset alignment
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
+}
+
+// Numbered pin badge for the top-3 kill hotspots. Colors match
+// HotspotsPanel rank chips so the panel and map are visually linked.
+function drawHotspotPin(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rank: number,
+  pulse: number
+) {
+  const RANK_COLORS = ['#fb923c', '#cbd5e1', '#d97706']; // 1=orange, 2=slate, 3=amber
+  const color = RANK_COLORS[rank - 1] ?? '#fb923c';
+  const radius = 14 * (0.9 + pulse * 0.1);
+
+  ctx.save();
+
+  // Outer glow halo
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
+
+  // Filled circle
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  // White outline ring
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Rank number, white bold
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.round(radius * 1.1)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(rank.toString(), x, y);
+
+  ctx.restore();
 }
 
 // Improved heatmap with radial gradients and better visibility

@@ -5,6 +5,7 @@ import { Timeline } from './components/Timeline';
 import { LoadingScreen } from './components/LoadingScreen';
 import { CustomDataLoader } from './components/CustomDataLoader';
 import { HotspotsPanel } from './components/HotspotsPanel';
+import { computeHotspots } from './utils/hotspots';
 import { useData } from './hooks/useData';
 import type { CustomDataset } from './utils/parquetLoader';
 import type { Filters, HeatmapMode, MatchInfo, PlayerEvent, MapId } from './types';
@@ -92,6 +93,13 @@ function App() {
   // Determine current map
   const currentMapId: MapId = selectedMatch?.mapId || 'AmbroseValley';
 
+  // Compute kill hotspots once and share with both the map (for pin badges)
+  // and the HotspotsPanel (for the textual list). Single source of truth.
+  const hotspots = useMemo(() => {
+    if (matchEvents.length === 0) return [];
+    return computeHotspots(matchEvents, currentMapId, { topN: 3 });
+  }, [matchEvents, currentMapId]);
+
   // Handle match selection
   const handleMatchSelect = (match: MatchInfo | null) => {
     setSelectedMatch(match);
@@ -157,13 +165,14 @@ function App() {
               filters={filters}
               heatmapMode={heatmapMode}
               currentTime={currentTime}
+              hotspots={hotspots}
             />
           )}
 
           {/* Hotspots auto-summary — same column as the events counter (top-left),
               positioned just above the playback control. */}
-          {selectedMatch && matchEvents.length > 0 && (
-            <HotspotsPanel events={matchEvents} mapId={currentMapId} />
+          {selectedMatch && (
+            <HotspotsPanel hotspots={hotspots} hasEvents={matchEvents.length > 0} />
           )}
         </div>
 

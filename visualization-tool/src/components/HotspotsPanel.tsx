@@ -1,24 +1,23 @@
-import { useMemo } from 'react';
-import type { PlayerEvent, MapId } from '../types';
-import { computeHotspots } from '../utils/hotspots';
+import type { Hotspot } from '../utils/hotspots';
 
 interface HotspotsPanelProps {
-  events: PlayerEvent[];
-  mapId: MapId;
+  /** Pre-computed hotspots from the parent — kept in sync with the map's pins. */
+  hotspots: Hotspot[];
+  /** Hide the panel entirely when there are no events loaded. */
+  hasEvents: boolean;
 }
 
 /**
  * Auto-summary that surfaces the top kill hotspots in the current match,
  * so a level designer can see the most contested zones without having to
  * scrub the timeline or eyeball the heatmap.
+ *
+ * Coordinates next to the region label disambiguate the case where multiple
+ * hotspots fall in the same coarse region (e.g. two distinct fight zones
+ * both inside the central third of the map).
  */
-export function HotspotsPanel({ events, mapId }: HotspotsPanelProps) {
-  const hotspots = useMemo(
-    () => computeHotspots(events, mapId, { topN: 3 }),
-    [events, mapId]
-  );
-
-  if (events.length === 0) return null;
+export function HotspotsPanel({ hotspots, hasEvents }: HotspotsPanelProps) {
+  if (!hasEvents) return null;
 
   return (
     <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur p-3 rounded-lg border border-slate-600 shadow-xl text-sm w-56 z-10">
@@ -54,7 +53,12 @@ export function HotspotsPanel({ events, mapId }: HotspotsPanelProps) {
               >
                 {i + 1}
               </span>
-              <span className="text-slate-200 flex-1">{h.region}</span>
+              <span className="flex-1 min-w-0 leading-tight">
+                <span className="text-slate-200">{h.region}</span>
+                <span className="text-slate-500 text-[10px] ml-1 tabular-nums">
+                  ({h.worldX}, {h.worldZ})
+                </span>
+              </span>
               <span className="text-orange-300 font-bold tabular-nums">
                 {h.count}
               </span>
