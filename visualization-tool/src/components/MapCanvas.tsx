@@ -201,33 +201,41 @@ export function MapCanvas({
       }
     });
 
-    // Draw event markers with high visibility
-    visibleEvents.forEach(event => {
-      if (event.event === 'Position' || event.event === 'BotPosition') return;
+    // Cluster overlapping events for better readability
+    const eventMarkers = visibleEvents.filter(e =>
+      e.event !== 'Position' && e.event !== 'BotPosition'
+    );
 
-      const { pixelX, pixelY } = worldToPixel(event.x, event.z, mapId);
-      const x = pixelX * mapScale;
-      const y = pixelY * mapScale;
+    // Cluster radius scales with zoom (events within this pixel distance get grouped)
+    const clusterRadius = 18 / scale;
+    const clusters = clusterEvents(eventMarkers, mapId, mapScale, clusterRadius);
 
+    // Draw clustered/individual event markers
+    clusters.forEach(cluster => {
       ctx.save();
-
-      switch (event.event) {
-        case 'Kill':
-        case 'BotKill':
-          drawKillMarker(ctx, x, y, event.event === 'Kill', pulse);
-          break;
-        case 'Killed':
-        case 'BotKilled':
-          drawDeathMarker(ctx, x, y, event.event === 'Killed', pulse);
-          break;
-        case 'KilledByStorm':
-          drawStormDeathMarker(ctx, x, y, pulse);
-          break;
-        case 'Loot':
-          drawLootMarker(ctx, x, y, pulse);
-          break;
+      if (cluster.events.length === 1) {
+        // Single event - draw normal marker
+        const event = cluster.events[0];
+        switch (event.event) {
+          case 'Kill':
+          case 'BotKill':
+            drawKillMarker(ctx, cluster.x, cluster.y, event.event === 'Kill', pulse);
+            break;
+          case 'Killed':
+          case 'BotKilled':
+            drawDeathMarker(ctx, cluster.x, cluster.y, event.event === 'Killed', pulse);
+            break;
+          case 'KilledByStorm':
+            drawStormDeathMarker(ctx, cluster.x, cluster.y, pulse);
+            break;
+          case 'Loot':
+            drawLootMarker(ctx, cluster.x, cluster.y, pulse);
+            break;
+        }
+      } else {
+        // Multiple events at same spot - draw cluster marker
+        drawClusterMarker(ctx, cluster, pulse);
       }
-
       ctx.restore();
     });
 
@@ -493,6 +501,123 @@ function drawLootMarker(ctx: CanvasRenderingContext2D, x: number, y: number, pul
   ctx.stroke();
 
   ctx.shadowBlur = 0;
+}
+
+// Event cluster type
+interface EventCluster {
+  x: number;
+  y: number;
+  events: PlayerEvent[];
+  types: Set<string>;
+}
+
+// Group nearby events into clusters
+function clusterEvents(
+  events: PlayerEvent[],
+  mapId: MapId,
+  mapScale: number,
+  radius: number
+): EventCluster[] {
+  const clusters: EventCluster[] = [];
+
+  events.forEach(event => {
+    const { pixelX, pixelY } = worldToPixel(event.x, event.z, mapId);
+    const x = pixelX * mapScale;
+    const y = pixelY * mapScale;
+
+    // Find an existing cluster within radius
+    let foundCluster = false;
+    for (const cluster of clusters) {
+      const dx = cluster.x - x;
+      const dy = cluster.y - y;
+      if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+        cluster.events.push(event);
+        cluster.types.add(event.event);
+        // Update cluster position to centroid
+        cluster.x = (cluster.x * (cluster.events.length - 1) + x) / cluster.events.length;
+        cluster.y = (cluster.y * (cluster.events.length - 1) + y) / cluster.events.length;
+        foundCluster = true;
+        break;
+      }
+    }
+
+    if (!foundCluster) {
+      clusters.push({
+        x,
+        y,
+        events: [event],
+        types: new Set([event.event])
+      });
+    }
+  });
+
+  return clusters;
+}
+
+// Draw a cluster marker showing multiple events at same location
+function drawClusterMarker(ctx: CanvasRenderingContext2D, cluster: EventCluster, pulse: number) {
+  const count = cluster.events.length;
+  const baseRadius = Math.min(18, 10 + count * 1.2);
+  const radius = baseRadius * (0.85 + pulse * 0.15);
+
+  // Determine dominant color based on event types present
+  const hasKill = cluster.types.has('Kill') || cluster.types.has('BotKill');
+  const hasDeath = cluster.types.has('Killed') || cluster.types.has('BotKilled');
+  const hasStorm = cluster.types.has('KilledByStorm');
+  const hasLoot = cluster.types.has('Loot');
+
+  // Build segments for ring (each event type gets a segment in the ring)
+  const segments: { color: string; angle: number }[] = [];
+  if (hasKill) segments.push({ color: '#84cc16', angle: 0 });
+  if (hasDeath) segments.push({ color: '#ef4444', angle: 0 });
+  if (hasStorm) segments.push({ color: '#d946ef', angle: 0 });
+  if (hasLoot) segments.push({ color: '#facc15', angle: 0 });
+
+  // Outer glow
+  ctx.shadowColor = segments[0]?.color || '#fff';
+  ctx.shadowBlur = 20;
+
+  // Dark inner background for the count
+  ctx.beginPath();
+  ctx.arc(cluster.x, cluster.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+  ctx.fill();
+
+  // Draw segmented ring (one segment per event type)
+  const segmentAngle = (Math.PI * 2) / segments.length;
+  segments.forEach((seg, i) => {
+    ctx.beginPath();
+    ctx.arc(
+      cluster.x,
+      cluster.y,
+      radius,
+      i * segmentAngle - Math.PI / 2,
+      (i + 1) * segmentAngle - Math.PI / 2
+    );
+    ctx.strokeStyle = seg.color;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  });
+
+  ctx.shadowBlur = 0;
+
+  // White outline ring
+  ctx.beginPath();
+  ctx.arc(cluster.x, cluster.y, radius - 2, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Count label - white bold text
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(10, radius * 0.7)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(count.toString(), cluster.x, cluster.y);
+
+  // Reset alignment
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
 }
 
 // Improved heatmap with radial gradients and better visibility
