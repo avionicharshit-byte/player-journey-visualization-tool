@@ -15,7 +15,7 @@ A web-based tool for LILA Games' Level Design team to visualize player behavior 
 - **Filtering** by map, date, match, player type, and event type
 - **Event clustering** — overlapping events at the same spot collapse into a count badge so dense fight zones stay readable
 - **Pan/zoom** on the map (scroll to zoom, drag to pan)
-- **Load custom data in the browser** — drop a `player_data.zip` directly into the UI and it gets parsed entirely client-side via DuckDB-WASM. No server, no upload — your data never leaves the browser.
+- **Load custom data in the browser** — drop any `player_data.zip` into the UI and it's parsed entirely client-side via DuckDB-WASM. No server, no upload — your data never leaves the browser. Works for any month/date folders, not just `February_XX`.
 
 ## Tech stack
 
@@ -45,11 +45,12 @@ lila-games/
     │   ├── minimaps/            # the 3 map images
     │   └── data/                # preprocessed JSON (committed)
     ├── scripts/
-    │   └── preprocess.py        # parquet → JSON
+    │   └── preprocess.py        # parquet → JSON (offline path)
     └── src/
-        ├── components/          # MapCanvas, Controls, Timeline, LoadingScreen
+        ├── components/          # MapCanvas, Controls, Timeline,
+        │                        # LoadingScreen, CustomDataLoader
         ├── hooks/               # useData
-        ├── utils/               # mapConfig (coordinate mapping)
+        ├── utils/               # mapConfig, parquetLoader (DuckDB-WASM)
         └── types/
 ```
 
@@ -84,6 +85,15 @@ This produces:
 - `public/data/stats.json` — aggregate counts
 - `public/data/matches/{id}.json` — one file per match (lazy-loaded)
 
+### Use your own data (no preprocessing needed)
+
+The app has a **"Load Custom Data"** button in the sidebar. Click it and drop a `player_data.zip` — the file is unzipped, every parquet is parsed in the browser via DuckDB-WASM (loaded lazily from CDN on first click), and the result is fed into the same renderer.
+
+- **Any month works.** The loader uses each file's parent folder as the date label, so `February_10/`, `January_05/`, `2026-04-12/`, etc. all populate the Date dropdown automatically.
+- **macOS-zipped files are fine.** AppleDouble metadata (`__MACOSX/`, `._<name>`) is filtered out before parsing.
+- **Map constraint.** The minimap images shipped in this repo cover the three known maps in LILA BLACK (AmbroseValley, GrandRift, Lockdown). A custom dataset that references a different `map_id` will load correctly but won't render on a matching minimap until you add the image to `public/minimaps/` and the config to `src/utils/mapConfig.ts`.
+- **Nothing leaves your browser.** No server upload, no telemetry — pure client-side processing.
+
 ### Build for production
 
 ```bash
@@ -108,3 +118,4 @@ The app is deployed to Vercel. Any push to `master` auto-deploys. Configuration:
 - **Bot detection** is by user_id format: UUIDs = humans, numeric strings = bots.
 - **Some matches contain no `BotPosition` events** — bots in those matches only appear via kill/death events, so their paths aren't drawn.
 - The repo includes preprocessed JSON, so you can `npm install && npm run dev` without needing the raw parquet zip.
+- If you want to point the tool at a different dataset without rebuilding, use the **Load Custom Data** button instead of re-running the Python script. It accepts any `player_data.zip` regardless of month, parses it in the browser, and swaps the in-memory dataset. Hit "Reset to bundled data" in the sidebar to switch back.

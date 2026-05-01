@@ -17,6 +17,10 @@ Initial instinct was Three.js because "game data". But the telemetry is fundamen
 
 ## Data flow
 
+There are **two paths** that produce the same in-memory shape; the rest of the app doesn't know or care which one fed it.
+
+### Path A — bundled data (default)
+
 ```
 parquet files (1,243 files, ~89k events)
         │
@@ -42,16 +46,33 @@ MapCanvas  ──>  worldToPixel()  ──>  Canvas 2D draw calls
 
 **Why split into per-match files?** A level designer looks at one match at a time. Loading all 89k events upfront would be wasteful — the match index (`matches.json`, ~50KB) is enough to populate filters. Per-match JSON files (avg 10–25KB) are fetched only when selected, then cached in memory. This keeps the initial page load under 100KB.
 
-### Optional in-browser path (custom data upload)
+### Path B — in-browser custom data upload
 
-The app also exposes a "Load Custom Data" button. When a reviewer drops a `player_data.zip` in:
+```
+user drops player_data.zip
+        │
+        ▼
+JSZip  ──>  filter out junk (__MACOSX/, ._*, .DS_Store, Thumbs.db)
+        │   then validate every entry starts with parquet magic bytes "PAR1"
+        ▼
+DuckDB-WASM  (lazy-loaded via dynamic import)
+   ├─ registerFileBuffer(name, bytes)  for each parquet
+   └─ SELECT * FROM read_parquet([...], filename = true)
+        │
+        ▼
+transform Arrow rows → matches[], stats, eventsByMatch (same shape as Path A)
+        │
+        ▼
+useData hook  ──>  same downstream rendering
+```
 
-1. **JSZip** unzips the archive and finds files matching `February_XX/*.nakama-0`.
-2. Each parquet buffer is registered into **DuckDB-WASM**'s virtual filesystem via `registerFileBuffer`.
-3. A single `read_parquet([...], filename = true)` query streams every event out as Arrow rows.
-4. The rows are transformed into the same in-memory shape `useData` already uses, so the rest of the app (MapCanvas, Timeline, heatmaps, clustering) doesn't need to know whether data came from the bundle or the upload.
+A few details that matter:
 
-The DuckDB-WASM module (~30MB) is fetched from JsDelivr CDN on demand and the loader code is split into its own chunk via dynamic `import()` — neither lands in the main bundle.
+- **Date folders are not hardcoded.** The loader uses the file's *immediate parent folder* as the date label, so `February_10/`, `January_05/`, `March_20/`, or even `2026-04-12/` all work. Whatever names show up in the zip populate the Date filter dropdown.
+- **macOS junk is filtered at the zip layer.** Zips created by Finder ship AppleDouble metadata (`__MACOSX/`, `._<name>`) which look like real entries to a naive reader. We drop them before they ever touch DuckDB.
+- **Defense-in-depth:** every entry that survives the filter is still magic-byte-checked (`PAR1` at offset 0). One corrupt file no longer kills the whole import — it's skipped with a console warning.
+- **Code-splitting.** The `parquetLoader` module is behind a dynamic `import()`; on first use the chunk loads (~75KB gzipped) and DuckDB-WASM's WASM module is fetched from JsDelivr CDN. The main bundle stays at ~70KB gzipped for users who only browse the bundled data.
+- **No upload happens.** Everything runs in the browser; the file never leaves the tab.
 
 ## Coordinate mapping (the tricky part)
 
@@ -81,6 +102,7 @@ The flip on the Y axis is the part that bites you if you're not careful — game
 - **Some matches have no `BotPosition` events** — the bots only show up in `BotKill`/`BotKilled` events for those. We render those bots only as event markers, not paths.
 - **Timestamps are Unix seconds, not ms.** Initial code treated them as ms and showed `00:00`. Confirmed by inspecting raw data (`t: 1770760465`).
 - **Loot events fire repeatedly at the same coords** (player picking up multiple items). We dedupe visually via clustering (events within ~18px collapse into a count badge).
+- **Custom uploads might come from any month.** The loader doesn't assume `February_*` — any folder name is treated as a date label. Custom data with a brand-new map will render against the wrong minimap (we only ship the three known minimap images), so the README documents this constraint.
 
 ## Major tradeoffs
 
@@ -92,3 +114,4 @@ The flip on the Y axis is the part that bites you if you're not careful — game
 | Heatmap: per-pixel imageData vs grid cells | Per-pixel kernel density | Grid-based (20px cells) with radial gradients | imageData was visually messy and slow. Grid gives clean, readable hot zones at the cost of fine resolution we don't need. |
 | Event clustering | Render every marker | Spatial clustering with count badges | At dense fight zones, kills/deaths/loot stack on top of each other and become unreadable. Clusters with mixed-color rings show what's there at a glance; zoom in to expand. |
 | Bundle one big JSON vs per-match JSON | Single 12MB matches.json | Per-match files + small index | Lazy-loading per match keeps the first paint fast and respects Vercel's static asset caching. |
+| In-browser custom data upload | Skip it (require Python preprocess) / accept JSON-only | DuckDB-WASM + JSZip behind a lazy `import()` | Lets a reviewer try their own zip without installing Python. Code-splitting keeps the cost out of the default bundle. The bundled-data path is unchanged, so we get the feature without regressions. |
