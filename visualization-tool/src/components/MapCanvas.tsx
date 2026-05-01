@@ -297,33 +297,63 @@ export function MapCanvas({
         </button>
       </div>
 
-      {/* Legend */}
-      <div className="absolute top-4 right-4 bg-black/70 backdrop-blur p-4 rounded-lg text-sm border border-slate-600">
-        <div className="font-bold mb-3 text-white">Legend</div>
-        <div className="space-y-2">
+      {/* Legend - SVG icons that match exactly what's drawn on the map */}
+      <div className="absolute top-4 right-4 bg-black/80 backdrop-blur p-4 rounded-lg text-sm border border-slate-600 shadow-xl">
+        <div className="font-bold mb-3 text-white text-xs uppercase tracking-wider">Legend</div>
+        <div className="space-y-2.5">
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="7" fill="none" stroke="#00ffff" strokeWidth="2" />
+              <circle cx="10" cy="10" r="5" fill="#00ffff" />
+              <circle cx="10" cy="10" r="2" fill="#000" />
+            </svg>
             <span className="text-cyan-400">Human Player</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="6" fill="none" stroke="#ff6600" strokeWidth="2" />
+              <circle cx="10" cy="10" r="4" fill="#ff6600" />
+              <circle cx="10" cy="10" r="1.5" fill="#000" />
+            </svg>
             <span className="text-orange-400">Bot</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[14px] border-l-transparent border-r-transparent border-b-lime-400"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <polygon points="10,3 16.5,15 3.5,15" fill="#84cc16" stroke="#fff" strokeWidth="1.5" />
+            </svg>
             <span className="text-lime-400">Kill</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-red-500 rotate-45 shadow-lg shadow-red-500/50"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <rect x="5" y="5" width="10" height="10" fill="#ef4444" stroke="#fff" strokeWidth="1.5" transform="rotate(45 10 10)" />
+              <line x1="6.5" y1="6.5" x2="13.5" y2="13.5" stroke="#fff" strokeWidth="1.5" />
+              <line x1="13.5" y1="6.5" x2="6.5" y2="13.5" stroke="#fff" strokeWidth="1.5" />
+            </svg>
             <span className="text-red-400">Death</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bg-fuchsia-500 shadow-lg shadow-fuchsia-500/50"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="7" fill="#d946ef" stroke="#fff" strokeWidth="1.5" />
+              <path d="M9 5 L12 9 L10.5 9 L13 15 L8 11 L10 11 L9 5 Z" fill="#fff" />
+            </svg>
             <span className="text-fuchsia-400">Storm Death</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-yellow-400 rounded shadow-lg shadow-yellow-400/50"></div>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <polygon points="10,3 12.2,8 17.5,8 13.2,11.5 14.8,17 10,13.5 5.2,17 6.8,11.5 2.5,8 7.8,8" fill="#facc15" stroke="#fff" strokeWidth="1" />
+            </svg>
             <span className="text-yellow-400">Loot</span>
+          </div>
+          <div className="border-t border-slate-700 pt-2 mt-2">
+            <div className="flex items-center gap-3">
+              <div className="relative w-5 h-5">
+                <svg width="20" height="20" viewBox="0 0 20 20" className="absolute">
+                  <circle cx="10" cy="10" r="8" fill="#1e293b" stroke="#fbbf24" strokeWidth="2" />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-yellow-400">5</span>
+              </div>
+              <span className="text-yellow-400 text-xs">Cluster (count)</span>
+            </div>
           </div>
         </div>
       </div>
