@@ -133,10 +133,8 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Map area: padded on the left so the floating panels (events counter
-            at top-left, hotspots panel at bottom-left) live in a reserved
-            strip and don't cover the actual minimap. */}
-        <div className="flex-1 relative min-h-0 overflow-hidden pl-64">
+        {/* Map Canvas */}
+        <div className="flex-1 relative min-h-0 overflow-hidden">
           {isLoadingMatch && (
             <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10">
               <div className="text-white">Loading match data...</div>
