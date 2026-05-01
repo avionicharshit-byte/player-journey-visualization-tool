@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
   "installCommand": "cd visualization-tool && npm install",
   "buildCommand": "cd visualization-tool && npm run build",
   "outputDirectory": "visualization-tool/dist",
