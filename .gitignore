@@ -1,0 +1,42 @@
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Claude
+.claude/
+
+# Node modules (will be installed by Vercel)
+node_modules/
+
+# Build output (Vercel builds this)
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Raw parquet data files (large, not needed - we use processed JSON)
+visualization-tool/public/data/February_*/
+
+# Keep processed JSON files:
+# - visualization-tool/public/data/matches.json
+# - visualization-tool/public/data/stats.json
+# - visualization-tool/public/data/events.json
+# - visualization-tool/public/data/matches/*.json
+# - visualization-tool/public/minimaps/
+
+# Preprocessing scripts output cache
+*.pyc
+__pycache__/
+
+# Temp files
+*.tmp
+*.temp

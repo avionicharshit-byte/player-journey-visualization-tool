@@ -1,0 +1,26 @@
+{
+  "total_events": 89104,
+  "total_matches": 796,
+  "dates": [
+    "February_10",
+    "February_11",
+    "February_12",
+    "February_13",
+    "February_14"
+  ],
+  "maps": [
+    "GrandRift",
+    "AmbroseValley",
+    "Lockdown"
+  ],
+  "event_types": [
+    "Position",
+    "Loot",
+    "KilledByStorm",
+    "BotKilled",
+    "Kill",
+    "Killed",
+    "BotPosition",
+    "BotKill"
+  ]
+}
