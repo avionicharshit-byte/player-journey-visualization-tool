@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CustomDataset, ProgressUpdate } from '../utils/parquetLoader';
 
 interface CustomDataLoaderProps {
@@ -13,6 +13,18 @@ export function CustomDataLoader({ isOpen, onClose, onLoaded }: CustomDataLoader
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Reset transient UI state every time the dialog opens so the next attempt
+  // starts clean — no stale error or progress from a previous failed run.
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setProgress(null);
+      setIsDragging(false);
+      setIsLoading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }, [isOpen]);
 
   const handleFile = useCallback(
     async (file: File) => {

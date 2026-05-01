@@ -90,19 +90,47 @@ export async function loadCustomDataset(
     const zip = await JSZip.loadAsync(file);
 
     const parquetEntries: { name: string; date: string; bytes: Uint8Array }[] = [];
-    const allEntries = Object.values(zip.files).filter(e => !e.dir);
+
+    // Filter out:
+    //   - directories
+    //   - macOS AppleDouble metadata files (anything inside __MACOSX/, or basenames starting with ._)
+    //   - .DS_Store / Thumbs.db / other dotfiles
+    const allEntries = Object.values(zip.files).filter(e => {
+      if (e.dir) return false;
+      if (e.name.startsWith('__MACOSX/') || e.name.includes('/__MACOSX/')) return false;
+      const basename = e.name.split('/').pop() ?? '';
+      if (basename.startsWith('._')) return false;
+      if (basename === '.DS_Store' || basename === 'Thumbs.db') return false;
+      return true;
+    });
 
     let unzipped = 0;
+    let skippedInvalid = 0;
     for (const entry of allEntries) {
-      // Match files look like:  February_10/<match-id>.nakama-0
-      // The README also notes parquet files even though the extension is `.nakama-0`.
-      const pathMatch = entry.name.match(/(February_\d+)\/([^/]+)\.nakama-0$/);
-      if (!pathMatch) continue;
+      // Files end with the .nakama-0 extension and live under a date-named
+      // folder (the original drop is February_XX, but we accept any month/day
+      // folder so January_05/, March_20/, 2026-04-12/, etc. all work too).
+      // We use the immediate parent directory as the date label.
+      if (!entry.name.endsWith('.nakama-0')) continue;
 
-      const date = pathMatch[1];
+      const parts = entry.name.split('/').filter(Boolean);
+      if (parts.length < 2) continue; // need at least a folder + file
+      const fileName = parts[parts.length - 1];
+      const date = parts[parts.length - 2];
+      const safeFileBase = fileName.replace(/\.nakama-0$/, '');
+
       const buf = await entry.async('uint8array');
+
+      // Defense-in-depth: real parquet files start with magic bytes "PAR1".
+      // Anything else (truncated archive, corrupt file, accidental rename) is skipped
+      // rather than failing the whole import.
+      if (buf.length < 8 || buf[0] !== 0x50 || buf[1] !== 0x41 || buf[2] !== 0x52 || buf[3] !== 0x31) {
+        skippedInvalid++;
+        continue;
+      }
+
       parquetEntries.push({
-        name: `${date}__${pathMatch[2]}.parquet`,
+        name: `${date}__${safeFileBase}.parquet`,
         date,
         bytes: buf
       });
@@ -117,9 +145,13 @@ export async function loadCustomDataset(
       }
     }
 
+    if (skippedInvalid > 0) {
+      console.warn(`Skipped ${skippedInvalid} entries that didn't look like valid parquet files.`);
+    }
+
     if (parquetEntries.length === 0) {
       throw new Error(
-        'No parquet files found in zip. Expected files at February_XX/*.nakama-0.'
+        'No parquet files found in zip. Expected files like <date_folder>/*.nakama-0 (any folder name works — it becomes the "date" label).'
       );
     }
 
