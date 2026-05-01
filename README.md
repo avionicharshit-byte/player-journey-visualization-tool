@@ -2,7 +2,7 @@
 
 A web-based tool for LILA Games' Level Design team to visualize player behavior in LILA BLACK — paths, kills, deaths, loot, and storm events on top of in-game minimaps, with timeline replay and heatmap overlays.
 
-**Live demo:** _(deployed URL goes here once Vercel is set up)_
+**Live demo:** _https://player-journey-visualization-tool-m7eaq2n2j.vercel.app/_
 
 ## What it does
 
