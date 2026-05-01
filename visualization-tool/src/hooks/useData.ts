@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { PlayerEvent, MapId, MatchInfo } from '../types';
+import type { CustomDataset } from '../utils/parquetLoader';
 
 interface RawEvent {
   u: string;   // user_id
@@ -29,7 +30,12 @@ interface Stats {
   event_types: string[];
 }
 
-export function useData() {
+/**
+ * @param customDataset Optional in-memory dataset (from a user-uploaded zip).
+ *                      When provided, all data is served from memory and no
+ *                      network fetches are made.
+ */
+export function useData(customDataset: CustomDataset | null = null) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [matches, setMatches] = useState<MatchInfo[]>([]);
@@ -37,8 +43,17 @@ export function useData() {
   const [matchEventsCache, setMatchEventsCache] = useState<Map<string, PlayerEvent[]>>(new Map());
 
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (customDataset) {
+      // Custom dataset path: use what the user uploaded, no network calls.
+      setMatches(customDataset.matches);
+      setStats(customDataset.stats);
+      setMatchEventsCache(new Map(customDataset.eventsByMatch));
+      setError(null);
+      setIsLoading(false);
+    } else {
+      loadInitialData();
+    }
+  }, [customDataset]);
 
   async function loadInitialData() {
     try {
@@ -67,6 +82,8 @@ export function useData() {
 
       setMatches(formattedMatches);
       setStats(statsData);
+      // Reset the cache when switching back to the bundled dataset
+      setMatchEventsCache(new Map());
       setIsLoading(false);
     } catch (err) {
       console.error('Error loading data:', err);
@@ -76,9 +93,14 @@ export function useData() {
   }
 
   const loadMatchEvents = useCallback(async (matchId: string): Promise<PlayerEvent[]> => {
-    // Check cache first
+    // Check cache first (also serves the custom-dataset case, which seeds the cache up front)
     if (matchEventsCache.has(matchId)) {
       return matchEventsCache.get(matchId)!;
+    }
+
+    // Custom dataset is fully in-memory — anything missing means "no events for this match"
+    if (customDataset) {
+      return customDataset.eventsByMatch.get(matchId) ?? [];
     }
 
     try {
@@ -112,7 +134,7 @@ export function useData() {
       console.error('Error loading match events:', err);
       return [];
     }
-  }, [matchEventsCache]);
+  }, [matchEventsCache, customDataset]);
 
   const getMatchesByMap = useCallback((mapId: MapId | 'all'): MatchInfo[] => {
     if (mapId === 'all') return matches;

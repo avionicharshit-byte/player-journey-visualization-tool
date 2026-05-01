@@ -3,7 +3,9 @@ import { MapCanvas } from './components/MapCanvas';
 import { Controls } from './components/Controls';
 import { Timeline } from './components/Timeline';
 import { LoadingScreen } from './components/LoadingScreen';
+import { CustomDataLoader } from './components/CustomDataLoader';
 import { useData } from './hooks/useData';
+import type { CustomDataset } from './utils/parquetLoader';
 import type { Filters, HeatmapMode, MatchInfo, PlayerEvent, MapId } from './types';
 import './index.css';
 
@@ -20,13 +22,29 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 function App() {
-  const { isLoading, error, matches, stats, loadMatchEvents } = useData();
+  const [customDataset, setCustomDataset] = useState<CustomDataset | null>(null);
+  const [showLoader, setShowLoader] = useState(false);
+  const { isLoading, error, matches, stats, loadMatchEvents } = useData(customDataset);
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>({ type: 'none' });
   const [selectedMatch, setSelectedMatch] = useState<MatchInfo | null>(null);
   const [matchEvents, setMatchEvents] = useState<PlayerEvent[]>([]);
   const [isLoadingMatch, setIsLoadingMatch] = useState(false);
+
+  const handleCustomDataLoaded = (dataset: CustomDataset) => {
+    setCustomDataset(dataset);
+    setSelectedMatch(null);
+    setMatchEvents([]);
+    setFilters(DEFAULT_FILTERS);
+  };
+
+  const handleResetToBundled = () => {
+    setCustomDataset(null);
+    setSelectedMatch(null);
+    setMatchEvents([]);
+    setFilters(DEFAULT_FILTERS);
+  };
 
   // Timeline state
   const [currentTime, setCurrentTime] = useState(0);
@@ -88,6 +106,15 @@ function App() {
         selectedMatch={selectedMatch}
         onMatchSelect={handleMatchSelect}
         stats={stats}
+        isCustomData={customDataset !== null}
+        onOpenLoader={() => setShowLoader(true)}
+        onResetData={handleResetToBundled}
+      />
+
+      <CustomDataLoader
+        isOpen={showLoader}
+        onClose={() => setShowLoader(false)}
+        onLoaded={handleCustomDataLoaded}
       />
 
       {/* Main Content Area */}

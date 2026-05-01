@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { MapId, Filters, HeatmapMode, MatchInfo } from '../types';
 import { DATES } from '../utils/mapConfig';
 
@@ -10,7 +10,10 @@ interface ControlsProps {
   matches: MatchInfo[];
   selectedMatch: MatchInfo | null;
   onMatchSelect: (match: MatchInfo | null) => void;
-  stats: { total_events: number; total_matches: number } | null;
+  stats: { total_events: number; total_matches: number; dates?: string[] } | null;
+  isCustomData: boolean;
+  onOpenLoader: () => void;
+  onResetData: () => void;
 }
 
 export function Controls({
@@ -21,13 +24,23 @@ export function Controls({
   matches,
   selectedMatch,
   onMatchSelect,
-  stats
+  stats,
+  isCustomData,
+  onOpenLoader,
+  onResetData
 }: ControlsProps) {
   const filteredMatches = matches.filter(m => {
     if (filters.map !== 'all' && m.mapId !== filters.map) return false;
     if (filters.date !== 'all' && m.date !== filters.date) return false;
     return true;
   });
+
+  // Use the dataset's actual dates when available (for custom uploads),
+  // otherwise fall back to the bundled DATES constant.
+  const availableDates = useMemo(() => {
+    if (stats?.dates && stats.dates.length > 0) return stats.dates;
+    return DATES;
+  }, [stats]);
 
   return (
     <div className="w-80 bg-slate-800 p-4 overflow-y-auto flex flex-col gap-4">
@@ -38,6 +51,35 @@ export function Controls({
           <p className="text-slate-500 text-xs mt-1">
             {stats.total_matches.toLocaleString()} matches · {stats.total_events.toLocaleString()} events
           </p>
+        )}
+      </div>
+
+      {/* Data source */}
+      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Data source</div>
+          {isCustomData ? (
+            <span className="text-[10px] px-1.5 py-0.5 bg-cyan-400/20 text-cyan-300 rounded font-bold">CUSTOM</span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded font-bold">BUNDLED</span>
+          )}
+        </div>
+        <button
+          onClick={onOpenLoader}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-medium rounded px-3 py-2 transition shadow"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9 4.5-4.5m0 0 4.5 4.5m-4.5-4.5v12" />
+          </svg>
+          Load Custom Data
+        </button>
+        {isCustomData && (
+          <button
+            onClick={onResetData}
+            className="w-full mt-2 text-xs text-slate-400 hover:text-white py-1 transition"
+          >
+            ↺ Reset to bundled data
+          </button>
         )}
       </div>
 
@@ -65,7 +107,7 @@ export function Controls({
           className="w-full bg-slate-700 text-white rounded px-3 py-2 text-sm"
         >
           <option value="all">All Dates</option>
-          {DATES.map(date => (
+          {availableDates.map(date => (
             <option key={date} value={date}>{date.replace('_', ' ')}</option>
           ))}
         </select>

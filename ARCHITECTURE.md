@@ -8,7 +8,8 @@
 | Build tool | Vite | Instant HMR, no config needed for TS/React, smaller bundle than CRA. |
 | Styling | Tailwind CSS v4 | Utility-first lets us iterate UI without context-switching to CSS files; ships only what we use. |
 | Rendering | HTML Canvas 2D API | We're drawing thousands of moving points/paths every frame. DOM/SVG would choke at this density; WebGL is overkill for 2D top-down maps. |
-| Data preprocessing | Python + pyarrow (`uv run`) | Pyarrow is the canonical parquet reader and it's stable. We tried JS-side parquet first (see tradeoffs below). |
+| Data preprocessing (offline) | Python + pyarrow (`uv run`) | Pyarrow is the canonical parquet reader and it's stable. We tried JS-side parquet first (see tradeoffs below). |
+| Data preprocessing (in-browser, optional) | DuckDB-WASM + JSZip | Lazy-loaded via dynamic `import()` so it stays out of the main bundle. Lets a reviewer drop a `player_data.zip` straight into the UI and inspect their own data without ever running the Python script. |
 | Hosting | Vercel | Static build + free tier + GitHub auto-deploy. The whole app is just static files + JSON. |
 
 ### Why not Three.js
@@ -40,6 +41,17 @@ MapCanvas  ──>  worldToPixel()  ──>  Canvas 2D draw calls
 ```
 
 **Why split into per-match files?** A level designer looks at one match at a time. Loading all 89k events upfront would be wasteful — the match index (`matches.json`, ~50KB) is enough to populate filters. Per-match JSON files (avg 10–25KB) are fetched only when selected, then cached in memory. This keeps the initial page load under 100KB.
+
+### Optional in-browser path (custom data upload)
+
+The app also exposes a "Load Custom Data" button. When a reviewer drops a `player_data.zip` in:
+
+1. **JSZip** unzips the archive and finds files matching `February_XX/*.nakama-0`.
+2. Each parquet buffer is registered into **DuckDB-WASM**'s virtual filesystem via `registerFileBuffer`.
+3. A single `read_parquet([...], filename = true)` query streams every event out as Arrow rows.
+4. The rows are transformed into the same in-memory shape `useData` already uses, so the rest of the app (MapCanvas, Timeline, heatmaps, clustering) doesn't need to know whether data came from the bundle or the upload.
+
+The DuckDB-WASM module (~30MB) is fetched from JsDelivr CDN on demand and the loader code is split into its own chunk via dynamic `import()` — neither lands in the main bundle.
 
 ## Coordinate mapping (the tricky part)
 

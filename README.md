@@ -15,6 +15,7 @@ A web-based tool for LILA Games' Level Design team to visualize player behavior 
 - **Filtering** by map, date, match, player type, and event type
 - **Event clustering** — overlapping events at the same spot collapse into a count badge so dense fight zones stay readable
 - **Pan/zoom** on the map (scroll to zoom, drag to pan)
+- **Load custom data in the browser** — drop a `player_data.zip` directly into the UI and it gets parsed entirely client-side via DuckDB-WASM. No server, no upload — your data never leaves the browser.
 
 ## Tech stack
 
@@ -24,7 +25,8 @@ A web-based tool for LILA Games' Level Design team to visualize player behavior 
 | Build | Vite |
 | Styling | Tailwind CSS v4 |
 | Rendering | HTML Canvas 2D API |
-| Data prep | Python 3 + pyarrow (run via `uv`) |
+| Data prep (offline) | Python 3 + pyarrow (run via `uv`) |
+| Data prep (in-browser, optional) | DuckDB-WASM + JSZip (lazy-loaded) |
 | Hosting | Vercel (static) |
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full breakdown of decisions and tradeoffs.
