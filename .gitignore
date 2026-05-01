@@ -23,13 +23,24 @@ dist/
 *.log
 npm-debug.log*
 
-# Raw parquet data files (large, not needed - we use processed JSON)
+# Raw parquet data files (large, not needed - we use processed JSON).
+# This pattern catches any month-named folder under public/data/.
+visualization-tool/public/data/January_*/
 visualization-tool/public/data/February_*/
+visualization-tool/public/data/March_*/
+visualization-tool/public/data/April_*/
+visualization-tool/public/data/May_*/
+visualization-tool/public/data/June_*/
+visualization-tool/public/data/July_*/
+visualization-tool/public/data/August_*/
+visualization-tool/public/data/September_*/
+visualization-tool/public/data/October_*/
+visualization-tool/public/data/November_*/
+visualization-tool/public/data/December_*/
 
 # Keep processed JSON files:
 # - visualization-tool/public/data/matches.json
 # - visualization-tool/public/data/stats.json
-# - visualization-tool/public/data/events.json
 # - visualization-tool/public/data/matches/*.json
 # - visualization-tool/public/minimaps/
 

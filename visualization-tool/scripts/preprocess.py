@@ -102,12 +102,6 @@ def process_all_data():
     # Sort events by match_id and timestamp
     all_events.sort(key=lambda x: (x["m"], x["t"]))
 
-    # Save all events
-    events_file = OUTPUT_DIR / "events.json"
-    print(f"\nWriting {events_file}...")
-    with open(events_file, "w") as f:
-        json.dump(all_events, f)
-
     # Create match index
     match_index = []
     for match_id, info in matches.items():
@@ -161,7 +155,6 @@ def process_all_data():
         json.dump(stats, f, indent=2)
 
     print(f"\nDone! Output written to {OUTPUT_DIR}")
-    print(f"  - events.json ({events_file.stat().st_size / 1024 / 1024:.2f} MB)")
     print(f"  - matches.json")
     print(f"  - stats.json")
     print(f"  - matches/*.json ({len(events_by_match)} files)")
