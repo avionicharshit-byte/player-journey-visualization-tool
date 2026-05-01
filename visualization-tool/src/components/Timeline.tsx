@@ -75,7 +75,12 @@ export function Timeline({
   };
 
   return (
-    <div className={`bg-slate-800 p-4 ${disabled ? 'opacity-50' : ''}`}>
+    <div className={`bg-slate-800 border-t border-slate-700 p-4 ${disabled ? 'opacity-60' : ''}`}>
+      {disabled && (
+        <div className="text-center text-slate-500 text-sm mb-2">
+          Select a match to enable playback controls
+        </div>
+      )}
       <div className="flex items-center gap-4">
         {/* Play/Pause Button */}
         <button
@@ -107,8 +112,8 @@ export function Timeline({
         </button>
 
         {/* Time Display */}
-        <div className="text-sm text-slate-300 w-24 text-center font-mono">
-          {formatTime(currentTime)} / {formatTime(1)}
+        <div className="text-sm text-slate-300 w-28 text-center font-mono">
+          {currentTime === 0 ? 'Full view' : `${formatTime(currentTime)} / ${formatTime(1)}`}
         </div>
 
         {/* Progress Slider */}

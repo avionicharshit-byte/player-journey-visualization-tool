@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MapCanvas } from './components/MapCanvas';
 import { Controls } from './components/Controls';
 import { Timeline } from './components/Timeline';
@@ -20,9 +20,7 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 function App() {
-  console.log('App rendering...');
   const { isLoading, error, matches, stats, loadMatchEvents } = useData();
-  console.log('Data state:', { isLoading, error, matchCount: matches.length });
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>({ type: 'none' });

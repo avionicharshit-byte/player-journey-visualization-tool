@@ -87,7 +87,7 @@ export function Controls({
           <option value="">Select a match...</option>
           {filteredMatches.slice(0, 100).map(match => (
             <option key={match.matchId} value={match.matchId}>
-              {match.mapId} - {match.playerCount}P/{match.botCount}B
+              {match.mapId} - {match.playerCount} human{match.playerCount !== 1 ? 's' : ''}, {match.botCount} bot{match.botCount !== 1 ? 's' : ''}
             </option>
           ))}
         </select>
@@ -110,7 +110,7 @@ export function Controls({
               onChange={e => setFilters(prev => ({ ...prev, showHumans: e.target.checked }))}
               className="rounded bg-slate-700 border-slate-600"
             />
-            <span className="text-blue-400">Humans</span>
+            <span className="text-cyan-400">Humans</span>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -119,7 +119,7 @@ export function Controls({
               onChange={e => setFilters(prev => ({ ...prev, showBots: e.target.checked }))}
               className="rounded bg-slate-700 border-slate-600"
             />
-            <span className="text-slate-400">Bots</span>
+            <span className="text-orange-400">Bots</span>
           </label>
         </div>
       </div>
