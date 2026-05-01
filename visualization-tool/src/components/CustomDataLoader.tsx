@@ -68,7 +68,7 @@ export function CustomDataLoader({ isOpen, onClose, onLoaded }: CustomDataLoader
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-md p-6">
+      <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-xl p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-white">Load Custom Data</h2>
@@ -131,7 +131,8 @@ export function CustomDataLoader({ isOpen, onClose, onLoaded }: CustomDataLoader
             </div>
 
             <div className="mt-4 text-xs text-slate-500 space-y-1">
-              <div>• Expects parquet files at <code className="text-slate-300">February_XX/*.nakama-0</code></div>
+              <div>• Expects <code className="text-slate-300">&lt;date_folder&gt;/*.nakama-0</code> — folder name becomes the date label</div>
+              <div>• Works for any month/date (e.g. <code className="text-slate-300">January_05</code>, <code className="text-slate-300">2026-04-12</code>)</div>
               <div>• Processed entirely in your browser — nothing is uploaded</div>
               <div>• First load takes ~10s while DuckDB-WASM initializes</div>
             </div>
